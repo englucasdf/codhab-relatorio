@@ -1,6 +1,6 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-import json, base64, io, os, tempfile
+import json, base64, io, os
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
@@ -45,7 +45,11 @@ def salvar_no_drive(pdf_bytes, nome_arquivo, ra):
 
 @app.route("/", methods=["GET"])
 def index():
-    return "CODHAB PDF Generator — OK", 200
+    return send_from_directory(".", "index.html")
+
+@app.route("/health", methods=["GET"])
+def health():
+    return "OK", 200
 
 @app.route("/gerar", methods=["POST"])
 def gerar():
@@ -54,15 +58,11 @@ def gerar():
         if not dados:
             return jsonify({"ok": False, "erro": "Dados inválidos"}), 400
 
-        # Gerar PDF em memória
         buf = io.BytesIO()
         gerar_pdf(dados, buf)
         pdf_bytes = buf.getvalue()
 
-        # Nome do arquivo
         nome = dados.get("endereco", "relatorio") + ".pdf"
-
-        # Salvar no Drive
         ra = dados.get("ra", "Geral")
         url = salvar_no_drive(pdf_bytes, nome, ra)
 
