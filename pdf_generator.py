@@ -48,8 +48,26 @@ def estilos():
 
 ST = estilos()
 
-LOGO_CODHAB = "/home/claude/logo_p1_0.png"
-LOGO_GDF    = "/home/claude/logo_p1_1.png"
+import json as _json, base64 as _base64, io as _io, os as _os
+
+def _load_logos():
+    # Tenta carregar do logos_b64.json (produção e dev)
+    for path in ["logos_b64.json", "/home/claude/logos_b64.json"]:
+        if _os.path.exists(path):
+            with open(path) as f:
+                logos = _json.load(f)
+            codhab = _io.BytesIO(_base64.b64decode(logos["CODHAB"]))
+            gdf    = _io.BytesIO(_base64.b64decode(logos["GDF"]))
+            return codhab, gdf
+    # Fallback: arquivos PNG diretos
+    for base in [".", "/home/claude"]:
+        c = f"{base}/logo_p1_0.png"
+        g = f"{base}/logo_p1_1.png"
+        if _os.path.exists(c):
+            return c, g
+    raise FileNotFoundError("Logos não encontradas")
+
+LOGO_CODHAB, LOGO_GDF = _load_logos()
 
 # ── Cabeçalho institucional ────────────────────────────────────────────────
 def cabecalho(gerencia="Gerência de Patrimônio - GEPAT"):
