@@ -58,17 +58,24 @@ def gerar():
         if not dados:
             return jsonify({"ok": False, "erro": "Dados inválidos"}), 400
 
+        print(f"Gerando PDF para: {dados.get('ra')} - {dados.get('endereco')}")
         buf = io.BytesIO()
         gerar_pdf(dados, buf)
         pdf_bytes = buf.getvalue()
+        print(f"PDF gerado: {len(pdf_bytes)} bytes")
 
         nome = dados.get("endereco", "relatorio") + ".pdf"
         ra = dados.get("ra", "Geral")
+        print(f"Salvando no Drive: CODHAB/{ra}/{nome}")
         url = salvar_no_drive(pdf_bytes, nome, ra)
+        print(f"Salvo com sucesso: {url}")
 
         return jsonify({"ok": True, "nome": nome, "pasta": ra, "url": url})
 
     except Exception as e:
+        import traceback
+        print(f"ERRO: {str(e)}")
+        print(traceback.format_exc())
         return jsonify({"ok": False, "erro": str(e)}), 500
 
 if __name__ == "__main__":
