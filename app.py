@@ -74,7 +74,7 @@ def gerar():
     except Exception as e:
         import traceback
         print(f"ERRO: {str(e)}")
-        print(traceback.format_exc())\
+        print(traceback.format_exc())
         return jsonify({"ok": False, "erro": str(e)}), 500
 
 if __name__ == "__main__":
