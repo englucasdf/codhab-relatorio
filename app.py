@@ -24,22 +24,22 @@ def obter_ou_criar_pasta(service, nome, parent_id=None):
     q = f"name='{nome}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
     if parent_id:
         q += f" and '{parent_id}' in parents"
-    res = service.files().list(q=q, fields="files(id,name)").execute()
+    res = service.files().list(q=q, fields="files(id,name)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute()
     arquivos = res.get("files", [])
     if arquivos:
         return arquivos[0]["id"]
     meta = {"name": nome, "mimeType": "application/vnd.google-apps.folder"}
     if parent_id:
         meta["parents"] = [parent_id]
-    pasta = service.files().create(body=meta, fields="id").execute()
+    pasta = service.files().create(body=meta, fields="id", supportsAllDrives=True).execute()
     return pasta["id"]
 
 def salvar_no_drive(pdf_bytes, nome_arquivo, ra):
     service = get_drive_service()
-    id_ra = obter_ou_criar_pasta(service, ra, PASTA_RAIZ_ID)  # usa ID direto, sem buscar CODHAB pelo nome
+    id_ra = obter_ou_criar_pasta(service, ra, PASTA_RAIZ_ID)
     meta = {"name": nome_arquivo, "parents": [id_ra]}
     media = MediaIoBaseUpload(io.BytesIO(pdf_bytes), mimetype="application/pdf")
-    arquivo = service.files().create(body=meta, media_body=media, fields="id,webViewLink").execute()
+    arquivo = service.files().create(body=meta, media_body=media, fields="id,webViewLink", supportsAllDrives=True).execute()
     return arquivo.get("webViewLink", "")
 
 @app.route("/", methods=["GET"])
