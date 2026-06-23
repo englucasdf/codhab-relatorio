@@ -9,7 +9,7 @@ from pdf_generator import gerar_pdf
 app = Flask(__name__)
 CORS(app)
 
-PASTA_RAIZ = "CODHAB"
+PASTA_RAIZ_ID = "1igS7m3q3D76oAEqU1cAfUZ_Gaz_ZcBdV"  # ID da pasta CODHAB compartilhada com a Service Account
 SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 def get_drive_service():
@@ -36,8 +36,7 @@ def obter_ou_criar_pasta(service, nome, parent_id=None):
 
 def salvar_no_drive(pdf_bytes, nome_arquivo, ra):
     service = get_drive_service()
-    id_codhab = obter_ou_criar_pasta(service, PASTA_RAIZ)
-    id_ra = obter_ou_criar_pasta(service, ra, id_codhab)
+    id_ra = obter_ou_criar_pasta(service, ra, PASTA_RAIZ_ID)  # usa ID direto, sem buscar CODHAB pelo nome
     meta = {"name": nome_arquivo, "parents": [id_ra]}
     media = MediaIoBaseUpload(io.BytesIO(pdf_bytes), mimetype="application/pdf")
     arquivo = service.files().create(body=meta, media_body=media, fields="id,webViewLink").execute()
@@ -75,7 +74,7 @@ def gerar():
     except Exception as e:
         import traceback
         print(f"ERRO: {str(e)}")
-        print(traceback.format_exc())
+        print(traceback.format_exc())\
         return jsonify({"ok": False, "erro": str(e)}), 500
 
 if __name__ == "__main__":
