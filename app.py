@@ -1,46 +1,10 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, make_response
 from flask_cors import CORS
-import json, base64, io, os
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaIoBaseUpload
+import io, os
 from pdf_generator import gerar_pdf
 
 app = Flask(__name__)
 CORS(app)
-
-PASTA_RAIZ_ID = "1igS7m3q3D76oAEqU1cAfUZ_Gaz_ZcBdV"  # ID da pasta CODHAB compartilhada com a Service Account
-SCOPES = ["https://www.googleapis.com/auth/drive"]
-
-def get_drive_service():
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
-    if not creds_json:
-        raise Exception("GOOGLE_CREDENTIALS não configurado")
-    creds_info = json.loads(creds_json)
-    creds = service_account.Credentials.from_service_account_info(creds_info, scopes=SCOPES)
-    return build("drive", "v3", credentials=creds)
-
-def obter_ou_criar_pasta(service, nome, parent_id=None):
-    q = f"name='{nome}' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-    if parent_id:
-        q += f" and '{parent_id}' in parents"
-    res = service.files().list(q=q, fields="files(id,name)", supportsAllDrives=True, includeItemsFromAllDrives=True).execute()
-    arquivos = res.get("files", [])
-    if arquivos:
-        return arquivos[0]["id"]
-    meta = {"name": nome, "mimeType": "application/vnd.google-apps.folder"}
-    if parent_id:
-        meta["parents"] = [parent_id]
-    pasta = service.files().create(body=meta, fields="id", supportsAllDrives=True).execute()
-    return pasta["id"]
-
-def salvar_no_drive(pdf_bytes, nome_arquivo, ra):
-    service = get_drive_service()
-    id_ra = obter_ou_criar_pasta(service, ra, PASTA_RAIZ_ID)
-    meta = {"name": nome_arquivo, "parents": [id_ra]}
-    media = MediaIoBaseUpload(io.BytesIO(pdf_bytes), mimetype="application/pdf")
-    arquivo = service.files().create(body=meta, media_body=media, fields="id,webViewLink", supportsAllDrives=True).execute()
-    return arquivo.get("webViewLink", "")
 
 @app.route("/", methods=["GET"])
 def index():
@@ -57,19 +21,23 @@ def gerar():
         if not dados:
             return jsonify({"ok": False, "erro": "Dados inválidos"}), 400
 
-        print(f"Gerando PDF para: {dados.get('ra')} - {dados.get('endereco')}")
+        ra = dados.get("ra", "Geral")
+        endereco = dados.get("endereco", "relatorio")
+        print(f"Gerando PDF para: {ra} - {endereco}")
+
         buf = io.BytesIO()
         gerar_pdf(dados, buf)
         pdf_bytes = buf.getvalue()
         print(f"PDF gerado: {len(pdf_bytes)} bytes")
 
-        nome = dados.get("endereco", "relatorio") + ".pdf"
-        ra = dados.get("ra", "Geral")
-        print(f"Salvando no Drive: CODHAB/{ra}/{nome}")
-        url = salvar_no_drive(pdf_bytes, nome, ra)
-        print(f"Salvo com sucesso: {url}")
+        # Nome do arquivo: RA_Endereco.pdf (sem caracteres problemáticos)
+        nome = f"{ra}_{endereco}.pdf".replace("/", "-").replace("\\", "-")
 
-        return jsonify({"ok": True, "nome": nome, "pasta": ra, "url": url})
+        response = make_response(pdf_bytes)
+        response.headers["Content-Type"] = "application/pdf"
+        response.headers["Content-Disposition"] = f'attachment; filename="{nome}"'
+        response.headers["Content-Length"] = len(pdf_bytes)
+        return response
 
     except Exception as e:
         import traceback

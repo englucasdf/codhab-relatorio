@@ -208,7 +208,7 @@ async function gerarPDF(){
 
   const btn = document.getElementById("btn-gerar");
   btn.disabled = true; btn.textContent = "⏳ Gerando...";
-  mostrarStatus("Gerando PDF e salvando no Drive...","st-info");
+  mostrarStatus("Gerando PDF...","st-info");
 
   const dados = {
     ra, endereco,
@@ -223,12 +223,26 @@ async function gerarPDF(){
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(dados)
     });
-    const json = await res.json();
-    if(json.ok){
-      mostrarStatus(`✅ PDF salvo no Drive!<br><b>CODHAB / ${json.pasta}</b><br><small>${json.nome}</small>`, "st-ok");
-    } else {
-      mostrarStatus("❌ Erro: " + json.erro, "st-erro");
+
+    if(!res.ok){
+      const err = await res.json().catch(()=>({erro:"Erro desconhecido"}));
+      mostrarStatus("❌ Erro: " + err.erro, "st-erro");
+      return;
     }
+
+    // Recebe o PDF como blob e dispara download
+    const blob = await res.blob();
+    const nome = `${ra}_${endereco}.pdf`;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nome;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 2000);
+
+    mostrarStatus(`✅ PDF gerado! Verifique seus downloads.<br><small>${nome}</small>`, "st-ok");
+
   } catch(e) {
     mostrarStatus("❌ Erro de conexão: " + e.message, "st-erro");
   } finally {
